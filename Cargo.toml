@@ -10,14 +10,14 @@ crate-type = ["cdylib"]
 [dependencies]
 base64 = "0.23"
 flate2 = "1"
-js-sys = "=0.3"
+js-sys = "0.3"
 pagefind_web = { git = "https://github.com/CloudCannon/pagefind.git", rev = "860a4ea87e7a52379520f9eaefd0f8a6b23eb462", features = ["en"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 unicode-normalization = "0.1"
 unicode_categories = "0.1"
-wasm-bindgen = "=0.2"
-web-sys = { version = "=0.3", features = [
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = [
   "Document", "Element", "Event", "EventTarget", "FormData", "History", "HtmlElement",
   "HtmlFormElement", "HtmlInputElement", "HtmlSelectElement", "Location", "MouseEvent",
   "Node", "UrlSearchParams", "Window",
