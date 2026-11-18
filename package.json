@@ -5,10 +5,12 @@
   "type": "module",
   "license": "GPL-3.0-only",
   "scripts": {
-    "build": "python3 scripts/build.py && node scripts/index.mjs && sh scripts/build-wasm.sh",
+    "build": "python3 scripts/build.py && node scripts/index.mjs && sh scripts/build-wasm.sh && node scripts/minify.mjs",
     "test": "python3 -m unittest discover -s tests -v"
   },
   "devDependencies": {
+    "esbuild": "0.28.2",
+    "html-minifier-terser": "7.2.0",
     "pagefind": "1.6.0",
     "wasm-pack": "0.15.1"
   }

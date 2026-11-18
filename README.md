@@ -23,9 +23,12 @@ lives in `scripts/catalog.py`. The normalized, deterministically ordered
 `dist/data/catalog.json` feeds the static package pages and the Pagefind custom records.
 The build embeds the Pagefind index and display rows in
 `dist/assets/wasm/packages_bg.wasm`. The single module contains the Pagefind Rust search
-engine and the browser UI in `src/`. The small bootstrap and generated wasm-bindgen
-JavaScript connect it to browser APIs. Package details remain static HTML, and APK
+engine and the browser UI in `src/`. The catalog HTML starts the module through the
+generated wasm-bindgen JavaScript. Package details remain static HTML, and APK
 downloads link directly to the source repositories.
+
+After building the WASM bundle, `npm run build` minifies the HTML, CSS, and JavaScript
+in `dist/`, including the generated browser loader.
 
 The Pagefind npm package and Rust source are pinned to the same release because the
 embedded index uses that release’s internal format. Upgrade and test both together.

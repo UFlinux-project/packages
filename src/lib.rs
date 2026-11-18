@@ -2,7 +2,7 @@ mod search;
 
 use std::{collections::BTreeMap, rc::Rc};
 
-use js_sys::{Array, Date, Intl, Object, Reflect};
+use js_sys::{Array, Date, Intl, Object};
 use search::{Row, Search};
 use wasm_bindgen::{JsCast, prelude::*};
 use web_sys::{
@@ -59,7 +59,6 @@ struct App {
     search: Search,
     form: HtmlFormElement,
     czech: bool,
-    dates: Intl::DateTimeFormat,
     numbers: Intl::NumberFormat,
 }
 
@@ -171,14 +170,13 @@ impl App {
         heading.append_child(&link)?;
         row.append_child(&heading)?;
         let built = if data.build_time > 0.0 {
-            self.dates
-                .format()
-                .call1(
-                    &JsValue::UNDEFINED,
-                    &Date::new(&JsValue::from_f64(data.build_time * 1000.0)),
-                )?
+            Date::new(&JsValue::from_f64(data.build_time * 1000.0))
+                .to_iso_string()
                 .as_string()
                 .unwrap_or_default()
+                .chars()
+                .take(10)
+                .collect()
         } else {
             String::new()
         };
@@ -326,20 +324,9 @@ pub fn start() -> Result<()> {
         .as_deref()
         == Some("cs");
     let locale = Array::of1(&JsValue::from_str(if czech { "cs" } else { "en" }));
-    let format = Object::new();
-    for (key, value) in [
-        ("year", "numeric"),
-        ("month", "short"),
-        ("day", "numeric"),
-        ("timeZone", "UTC"),
-    ] {
-        Reflect::set(&format, &key.into(), &value.into())?;
-    }
-
     let app = Rc::new(App {
         form: find(&document, "#filters")?,
         search: Search::new().map_err(error)?,
-        dates: Intl::DateTimeFormat::new(&locale, &format),
         numbers: Intl::NumberFormat::new(&locale, &Object::new()),
         czech,
         window,
@@ -395,6 +382,11 @@ pub fn start() -> Result<()> {
             app.render()
         })?;
     }
-    app.form.set_hidden(false);
-    app.render()
+    if !app.window.location().search()?.is_empty() {
+        app.render()?;
+    }
+    app.form.remove_attribute("inert")?;
+    app.element::<Element>("#pagination")?
+        .remove_attribute("inert")?;
+    Ok(())
 }

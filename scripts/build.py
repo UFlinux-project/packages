@@ -4,6 +4,7 @@ import os
 import shutil
 from collections import defaultdict
 from datetime import datetime, timezone
+from math import ceil
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -12,6 +13,23 @@ from catalog import DIGEST_PATH, digest, load_catalog, package_group, serialize
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "dist"
 SITE = os.getenv("SITE_ORIGIN", "https://pkgs.uflinux.org").rstrip("/")
+PAGE_SIZE = 25
+WASM_STARTUP = """<script>
+  if (location.search) document.documentElement.classList.add("pending-query");
+</script>
+<script type="module">
+  try {
+    const { default: init } = await import("/assets/wasm/packages.js");
+    await init();
+  } catch (error) {
+    console.error(error);
+    const status = document.querySelector("#status");
+    status.textContent = status.dataset.loadError;
+    document.querySelector("#retry").hidden = false;
+  } finally {
+    document.documentElement.classList.remove("pending-query");
+  }
+</script>"""
 
 
 def esc(value):
@@ -56,10 +74,11 @@ def layout(lang, route, title, content, *, script=False, missing=False):
   {meta}
   <link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/assets/site.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&amp;display=swap">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&amp;display=optional">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.3.1/css/fontawesome.min.css" integrity="sha384-m8DKa0MtZAZlyNgF18TSkQRYTPDY0sEELpwK2YijfYnVFH8kxiaO6hvopM168nue" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.3.1/css/solid.min.css" integrity="sha384-p/nJzgOJxEnSeUkMQ0nk5oPsUT5x8eOWi6pxU2ls9qcO9B78dCvZk0JSAOXWXUQN" crossorigin="anonymous">
-  {"<script type='module' src='/assets/bootstrap.js'></script>" if script else ""}
+  {WASM_STARTUP if script else ""}
 </head>
 <body>
   <a class="skip" href="#main">{tr("Skip to content", "Přejít k obsahu")}</a>
@@ -110,11 +129,26 @@ def catalog_page(lang, records):
         tr("Branch", "Větev"), tr("Architecture", "Architektura"), tr("License", "Licence"),
         tr("Built", "Sestaveno"),
     ]
+    latest = [pkg for pkg in records if pkg["latest"]]
+    pages = ceil(len(latest) / PAGE_SIZE)
+    total = format(len(latest), ",").replace(",", "\u00a0" if lang == "cs" else ",")
+    shown = min(len(latest), PAGE_SIZE)
+    status = tr(f"1–{shown} of {total} results", f"1–{shown} z {total} výsledků")
+    page_label = tr(f"Page 1 of {pages}", f"Strana 1 z {pages}")
+    rows = []
+    for pkg in latest[:PAGE_SIZE]:
+        built = datetime.fromtimestamp(pkg["buildTime"], timezone.utc).date().isoformat() if pkg["buildTime"] else ""
+        cells = (pkg["version"], pkg["repository"], pkg["branch"], pkg["architecture"], pkg["license"], built)
+        columns = "".join(f"<td>{esc(value or '—')}</td>" for value in cells)
+        href = esc(localized(lang, pkg["url"]))
+        name = esc(pkg["name"])
+        rows.append(f'<tr><th scope="row"><a href="{href}">{name}</a></th>{columns}</tr>')
+
     content = f"""
     <h1>{title}</h1>
     <p class="lead">{tr("Browse packages published by UFLinux for the base system and apps.", "Procházejte balíčky základního systému a aplikací vydávané projektem UFLinux.")}</p>
     <noscript><p>{tr("Enable JavaScript to search the package catalog.", "Pro vyhledávání v katalogu balíčků povolte JavaScript.")}</p></noscript>
-    <form id="filters" role="search" hidden>
+    <form id="filters" role="search" autocomplete="off" inert>
       <label class="query">{tr("Package name or description", "Název nebo popis balíčku")}<input type="search" name="q" placeholder="{tr('e.g. uflinux-files', 'např. uflinux-files')}" maxlength="200"></label>
       {"".join(selects)}
       <div class="filter-actions">
@@ -123,15 +157,15 @@ def catalog_page(lang, records):
       </div>
     </form>
     <section id="results" aria-label="{tr('Package results', 'Výsledky hledání')}">
-      <p id="status" role="status" data-load-error="{tr('Package search could not load.', 'Vyhledávání balíčků se nepodařilo načíst.')}"></p>
+      <p id="status" role="status" data-load-error="{tr('Package search could not load.', 'Vyhledávání balíčků se nepodařilo načíst.')}">{status}</p>
       <a id="retry" class="button" href="" hidden>{tr("Try again", "Zkusit znovu")}</a>
-      <div class="table-wrap" id="table-wrap" tabindex="0" role="region" aria-label="{tr('Package results table', 'Tabulka výsledků')}" hidden>
-        <table><thead><tr>{"".join(f'<th scope="col">{heading}</th>' for heading in headings)}</tr></thead><tbody id="rows"></tbody></table>
+      <div class="table-wrap" id="table-wrap" tabindex="0" role="region" aria-label="{tr('Package results table', 'Tabulka výsledků')}">
+        <table><thead><tr>{"".join(f'<th scope="col">{heading}</th>' for heading in headings)}</tr></thead><tbody id="rows">{"".join(rows)}</tbody></table>
       </div>
-      <nav id="pagination" aria-label="{tr('Results pages', 'Stránky výsledků')}" hidden>
-        <a class="button" id="previous">{tr("Previous", "Předchozí")}</a>
-        <span id="page-count"></span>
-        <a class="button" id="next">{tr("Next", "Další")}</a>
+      <nav id="pagination" aria-label="{tr('Results pages', 'Stránky výsledků')}" inert{" hidden" if pages <= 1 else ""}>
+        <a class="button" id="previous" hidden>{tr("Previous", "Předchozí")}</a>
+        <span id="page-count">{page_label}</span>
+        <a class="button" id="next" href="?page=2">{tr("Next", "Další")}</a>
       </nav>
     </section>"""
     return layout(lang, "/", title, content, script=True)

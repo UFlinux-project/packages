@@ -11,6 +11,7 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
+.pending-query #results, .pending-query footer { visibility: hidden; }
 body { margin: 0; }
 a { color: inherit; text-underline-offset: .2em; }
 a:hover { color: var(--accent); }
@@ -22,7 +23,7 @@ p { color: var(--muted); line-height: 1.7; }
 .brand { display: inline-flex; align-items: center; gap: 9px; font-size: 1.6rem; font-weight: 700; text-decoration: none; letter-spacing: -.05em; white-space: nowrap; }
 .header .brand { flex: 0 0 140px; }
 .header .brand img { display: block; width: 35px; height: 35px; flex: 0 0 35px; border-radius: 50%; }
-.header nav { display: grid; grid-template-columns: 80px 90px 90px 140px 80px; gap: 24px; flex-shrink: 0; margin-left: auto; font-size: .9rem; }
+.header nav { display: flex; gap: 24px; flex-shrink: 0; margin-left: auto; font-size: .9rem; }
 .header nav a { color: var(--muted); white-space: nowrap; text-decoration: none; }
 .header nav a:hover, .header nav a[aria-current] { color: white; }
 .language-switcher { flex: 0 0 128px; border-left: 1px solid var(--line); padding-left: 16px; font-size: .875rem; color: var(--muted); }
@@ -79,9 +80,7 @@ footer small { flex-basis: 100%; color: var(--muted); font-size: .7rem; }
   .header { height: 112px; display: grid; grid-template-columns: 1fr auto; grid-template-rows: 40px 26px; gap: 8px 12px; padding: 14px 24px; }
   .header .brand { width: 140px; }
   .header .brand img { width: 27px; height: 27px; flex-basis: 27px; }
-  .header nav { grid-column: 1 / -1; grid-row: 2; margin: 0; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; font-size: .8rem; }
-  .header nav a:last-child { text-align: right; }
-  .header nav a:nth-child(2) { text-align: center; }
+  .header nav { grid-column: 1 / -1; grid-row: 2; margin: 0; flex-wrap: wrap; gap: 14px 24px; font-size: .8rem; }
 }
 @media (max-width: 700px) {
   .header .brand { font-size: 1.3rem; }
@@ -91,8 +90,6 @@ footer small { flex-basis: 100%; color: var(--muted); font-size: .7rem; }
 }
 @media (max-width: 600px) {
   .header { height: 174px; grid-template-rows: 40px auto; }
-  .header nav { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 14px; }
-  .header nav a:nth-child(2), .header nav a:last-child { text-align: left; }
 }
 @media (max-width: 380px) {
   form, dl { grid-template-columns: 1fr; }
