@@ -102,7 +102,9 @@ def layout(lang, route, title, content, *, description="", script=False, missing
   <meta name="theme-color" content="#181818"><meta name="color-scheme" content="dark">
   <title>{esc(title)}</title>
   {meta}
-  <link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+  <link rel="icon" href="https://uflinux.org/favicon.ico" type="image/vnd.microsoft.icon" sizes="32x32">
+  <link rel="icon" href="https://uflinux.org/favicon.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="https://uflinux.org/favicon.svg" type="image/svg+xml" sizes="any">
   <style>{critical_css()}</style>
   <link rel="stylesheet" href="/assets/site.css" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.3.1/css/fontawesome.min.css" integrity="sha384-m8DKa0MtZAZlyNgF18TSkQRYTPDY0sEELpwK2YijfYnVFH8kxiaO6hvopM168nue" crossorigin="anonymous" media="print" onload="this.media='all'">
