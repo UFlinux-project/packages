@@ -5,7 +5,7 @@
   "type": "module",
   "license": "GPL-3.0-only",
   "scripts": {
-    "build": "python3 scripts/build.py && node scripts/index.mjs && wasm-pack build --release --target web --no-pack --no-typescript --out-dir dist/assets/wasm --out-name packages --locked",
+    "build": "python3 scripts/build.py && node scripts/index.mjs && sh scripts/build-wasm.sh",
     "test": "python3 -m unittest discover -s tests -v"
   },
   "devDependencies": {

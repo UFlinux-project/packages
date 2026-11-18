@@ -6,7 +6,10 @@ It indexes the packages published in UFLinux's two APK repositories for Alpine v
 ## Build and check locally
 
 Use Node.js 22.23.4 (see `.node-version`), Python 3.13 or newer, and Rust via `rustup`.
-`rust-toolchain.toml` selects the Rust version and the WebAssembly target.
+`rust-toolchain.toml` selects the stable Rust channel and the WebAssembly target.
+`npm run build` checks for the latest stable release and installs rustup under
+`target/rust-bootstrap/` on build images without it. This requires network access
+to the Rust distribution servers and uses `curl` to install rustup when needed.
 
 ```sh
 npm ci
