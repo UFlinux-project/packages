@@ -1,9 +1,11 @@
 """Build the two localized views and their shared package data."""
 import html
 import os
+import re
 import shutil
 from collections import defaultdict
 from datetime import datetime, timezone
+from functools import cache
 from math import ceil
 from pathlib import Path
 from urllib.parse import unquote
@@ -13,6 +15,8 @@ from catalog import DIGEST_PATH, digest, load_catalog, package_group, serialize
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "dist"
 SITE = os.getenv("SITE_ORIGIN", "https://pkgs.uflinux.org").rstrip("/")
+SOCIAL_IMAGE = "https://uflinux.org/assets/og-image.jpg"
+FONT_SOURCE = ROOT / "node_modules/@fontsource/ubuntu"
 PAGE_SIZE = 25
 WASM_STARTUP = """<script>
   if (location.search) document.documentElement.classList.add("pending-query");
@@ -40,7 +44,38 @@ def localized(lang, route):
     return ("/cs" if lang == "cs" else "") + route
 
 
-def layout(lang, route, title, content, *, script=False, missing=False):
+@cache
+def critical_css():
+    fonts = "".join((FONT_SOURCE / f"{weight}.css").read_text(encoding="utf-8") for weight in (400, 500, 700))
+    fonts = re.sub(r", url\(\./files/[^)]+\.woff\) format\('woff'\)", "", fonts)
+    fonts = fonts.replace("url(./files/", "url(/assets/fonts/").replace("font-display: swap", "font-display: optional")
+    return fonts + "\n" + (ROOT / "scripts/critical.css").read_text(encoding="utf-8")
+
+
+def page_metadata(lang, route, title, description):
+    canonical = SITE + localized(lang, route)
+    alternates = {"en": SITE + route, "cs": SITE + localized("cs", route), "x-default": SITE + route}
+    locale = "cs_CZ" if lang == "cs" else "en_GB"
+    other_locale = "en_GB" if lang == "cs" else "cs_CZ"
+    image_alt = "Tapeta Dark Ivy s tmavými listy" if lang == "cs" else "Dark Ivy wallpaper with dark leaves"
+    tags = [f'<link rel="canonical" href="{esc(canonical)}">']
+    tags.extend(f'<link rel="alternate" hreflang="{code}" href="{esc(url)}">' for code, url in alternates.items())
+    tags.append(f'<meta name="description" content="{esc(description)}">')
+    og = {
+        "type": "website", "site_name": "UFlinux", "title": title, "description": description,
+        "url": canonical, "locale": locale, "locale:alternate": other_locale, "image": SOCIAL_IMAGE,
+        "image:type": "image/jpeg", "image:width": "1200", "image:height": "630", "image:alt": image_alt,
+    }
+    twitter = {
+        "card": "summary_large_image", "title": title, "description": description,
+        "image": SOCIAL_IMAGE, "image:alt": image_alt,
+    }
+    tags.extend(f'<meta property="og:{key}" content="{esc(value)}">' for key, value in og.items())
+    tags.extend(f'<meta name="twitter:{key}" content="{esc(value)}">' for key, value in twitter.items())
+    return "\n  ".join(tags)
+
+
+def layout(lang, route, title, content, *, description="", script=False, missing=False):
     def tr(en, cs):
         return cs if lang == "cs" else en
 
@@ -58,26 +93,20 @@ def layout(lang, route, title, content, *, script=False, missing=False):
         f'<a href="{esc(url)}"{" aria-current=page" if current else ""}>{label}</a>'
         for url, label, current in links
     )
-    alternate = "".join(
-        f'<link rel="alternate" hreflang="{locale}" href="{esc(SITE + localized(locale, route))}">'
-        for locale in ("en", "cs")
-    )
-    meta = '<meta name="robots" content="noindex">' if missing else (
-        f'<link rel="canonical" href="{esc(SITE + localized(lang, route))}">{alternate}'
-    )
+    title = f"{title} · UFlinux"
+    meta = '<meta name="robots" content="noindex">' if missing else page_metadata(lang, route, title, description)
     return f"""<!doctype html>
-<html lang="{lang}">
+<html lang="{lang}" prefix="og: https://ogp.me/ns#">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#181818"><meta name="color-scheme" content="dark">
-  <title>{esc(title)} · UFlinux</title>
+  <title>{esc(title)}</title>
   {meta}
   <link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/assets/site.css">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&amp;display=optional">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.3.1/css/fontawesome.min.css" integrity="sha384-m8DKa0MtZAZlyNgF18TSkQRYTPDY0sEELpwK2YijfYnVFH8kxiaO6hvopM168nue" crossorigin="anonymous">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.3.1/css/solid.min.css" integrity="sha384-p/nJzgOJxEnSeUkMQ0nk5oPsUT5x8eOWi6pxU2ls9qcO9B78dCvZk0JSAOXWXUQN" crossorigin="anonymous">
+  <style>{critical_css()}</style>
+  <link rel="stylesheet" href="/assets/site.css" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.3.1/css/fontawesome.min.css" integrity="sha384-m8DKa0MtZAZlyNgF18TSkQRYTPDY0sEELpwK2YijfYnVFH8kxiaO6hvopM168nue" crossorigin="anonymous" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.3.1/css/solid.min.css" integrity="sha384-p/nJzgOJxEnSeUkMQ0nk5oPsUT5x8eOWi6pxU2ls9qcO9B78dCvZk0JSAOXWXUQN" crossorigin="anonymous" media="print" onload="this.media='all'">
   {WASM_STARTUP if script else ""}
 </head>
 <body>
@@ -113,6 +142,10 @@ def catalog_page(lang, records):
         return cs if lang == "cs" else en
 
     title = tr("Packages", "Balíčky")
+    description = tr(
+        "Search and download UFlinux system and application packages by repository, architecture, and version.",
+        "Vyhledávejte a stahujte systémové a aplikační balíčky UFlinux podle repozitáře, architektury a verze.",
+    )
     filters = [
         ("repository", tr("Repository", "Repozitář")),
         ("branch", tr("Branch", "Větev")),
@@ -168,7 +201,7 @@ def catalog_page(lang, records):
         <a class="button" id="next" href="?page=2">{tr("Next", "Další")}</a>
       </nav>
     </section>"""
-    return layout(lang, "/", title, content, script=True)
+    return layout(lang, "/", title, content, description=description, script=True)
 
 
 def size_label(size):
@@ -225,7 +258,10 @@ def package_page(lang, pkg, versions):
     {dependency_list("Provides", "Poskytuje", "provides")}
     {dependency_list("Install if", "Instalovat, pokud", "installIf")}
     """
-    return layout(lang, pkg["url"], f'{pkg["name"]} {pkg["version"]}', content)
+    name_version = f'{pkg["name"]} {pkg["version"]}'
+    target = f'{pkg["architecture"]} · {pkg["repository"]} {pkg["branch"]}'
+    description = f"{name_version} ({target}). {pkg['description']}".rstrip()
+    return layout(lang, pkg["url"], f'{name_version} · {pkg["architecture"]}', content, description=description)
 
 
 def write(route, document):
@@ -240,6 +276,11 @@ def build():
     if OUT.exists():
         shutil.rmtree(OUT)
     shutil.copytree(ROOT / "assets", OUT / "assets")
+    fonts = OUT / "assets/fonts"
+    fonts.mkdir()
+    for filename in set(re.findall(r"url\(/assets/fonts/([\w.-]+\.woff2)\)", critical_css())):
+        shutil.copyfile(FONT_SOURCE / "files" / filename, fonts / filename)
+    shutil.copyfile(FONT_SOURCE / "LICENSE", fonts / "LICENSE.txt")
     (OUT / "data").mkdir()
     (OUT / "data/catalog.json").write_bytes(serialize(catalog))
     (OUT / DIGEST_PATH.lstrip("/")).write_text(digest(catalog) + "\n", encoding="ascii")
@@ -252,6 +293,17 @@ def build():
             write(localized(lang, record["url"]), package_page(lang, record, groups[package_group(record)]))
     missing = '<h1>Page not found</h1><p><a class="back" href="/">Browse packages</a></p>'
     (OUT / "404.html").write_text(layout("en", "/", "Page not found", missing, missing=True), encoding="utf-8")
+    routes = ["/", *(record["url"] for record in records)]
+    urls = (
+        f"<url><loc>{esc(SITE + localized(lang, route))}</loc></url>"
+        for route in routes for lang in ("en", "cs")
+    )
+    (OUT / "sitemap.xml").write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        + "".join(urls) + "</urlset>\n",
+        encoding="utf-8",
+    )
+    (OUT / "robots.txt").write_text(f"User-agent: *\nAllow: /\nSitemap: {SITE}/sitemap.xml\n", encoding="utf-8")
     shutil.copyfile(ROOT / "_headers", OUT / "_headers")
     print(f"Built {len(records)} package versions in English and Czech")
 
