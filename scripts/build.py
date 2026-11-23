@@ -128,7 +128,7 @@ def layout(lang, route, title, content, *, description="", script=False, missing
   <footer>
     <div><a class="brand" href="{home}" translate="no">UFlinux.</a><p>{tr("A small system. Room for your ideas.", "Malý systém. Prostor pro vaše nápady.")}</p></div>
     <nav aria-label="{tr("Footer links", "Odkazy v zápatí")}">
-      <a href="https://github.com/UFlinux-project/uflinux3">GitHub ↗</a>
+      <a href="https://github.com/UFlinux-project/uflinux">GitHub ↗</a>
       <a href="https://github.com/UFlinux-project/packages/issues">{tr("Report an issue", "Nahlásit chybu")} ↗</a>
       <a href="{home}credits/">{tr("Artwork &amp; licenses", "Autoři a licence")}</a>
     </nav>
