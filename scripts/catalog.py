@@ -12,7 +12,7 @@ from urllib.request import urlopen
 
 BRANCH = "v3.24"
 SOURCES = {
-    "uflinux": ("https://repo.uflinux.org", ("x86_64", "x86", "aarch64", "armv7", "ppc64le", "riscv64")),
+    "uflinux": ("https://repo.uflinux.org", ("x86_64", "aarch64", "ppc64le", "riscv64")),
     "uflinux-apps": ("https://apps-repo.uflinux.org", ("x86_64", "aarch64", "ppc64le", "riscv64")),
 }
 SEGMENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+~-]*")
